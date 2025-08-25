@@ -5,7 +5,7 @@ YAML, environment variables ve database konfigürasyonu
 
 import yaml
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import logging
 from dotenv import load_dotenv

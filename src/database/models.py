@@ -183,16 +183,16 @@ class Signal(Base):
     executed_at = Column(DateTime)
     
     # Metadata (JSON)
-    metadata = Column(Text)  # JSON string for additional data
+    signal_metadata = Column(Text)  # JSON string for additional data
     
     def set_metadata(self, data: dict):
         """Metadata ayarlama"""
-        self.metadata = json.dumps(data)
+        self.signal_metadata = json.dumps(data)
     
     def get_metadata(self) -> dict:
         """Metadata alma"""
         try:
-            return json.loads(self.metadata) if self.metadata else {}
+            return json.loads(self.signal_metadata) if self.signal_metadata else {}
         except json.JSONDecodeError:
             return {}
     

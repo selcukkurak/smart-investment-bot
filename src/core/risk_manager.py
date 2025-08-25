@@ -166,6 +166,7 @@ class RiskManager:
             return {
                 'total_exposure': 0,
                 'total_risk': 0,
+                'risk_ratio': 0,
                 'risk_level': RiskLevel.LOW,
                 'recommendations': ['Portfolio is empty - safe to start trading']
             }

@@ -1,118 +1,57 @@
-# Smart Investment Bot Configuration
-# Copy this file to config.yaml and update with your settings
-
-bot:
-  initial_capital: 10000.0
-  trading_mode: paper  # paper, live, backtest
-  max_positions: 10
-  max_risk_per_trade: 0.02  # 2%
-  max_portfolio_risk: 0.1   # 10%
-
-strategies:
-  scalping:
-    enabled: true
-    timeframe: 5m
-    rsi_oversold: 30
-    rsi_overbought: 70
-    volume_multiplier: 1.5
-    price_change_threshold: 0.002
-    stop_loss_pct: 0.005   # 0.5%
-    take_profit_pct: 0.01  # 1.0%
-    max_hold_time_minutes: 30
-    min_spread_pct: 0.001
-
-  swing:
-    enabled: true
-    timeframe: 4h
-    ema_short: 12
-    ema_long: 26
-    rsi_oversold: 35
-    rsi_overbought: 65
-    macd_signal_period: 9
-    bollinger_period: 20
-    bollinger_std: 2
-    volume_confirmation: true
-    stop_loss_pct: 0.03    # 3%
-    take_profit_pct: 0.08  # 8%
-    max_hold_days: 7
-    trend_strength_threshold: 0.6
-
 apis:
-  binance:
-    api_key: YOUR_BINANCE_API_KEY
-    api_secret: YOUR_BINANCE_API_SECRET
-    testnet: true
-    rate_limit_per_minute: 1200
-
   alpha_vantage:
     api_key: YOUR_ALPHA_VANTAGE_API_KEY
     rate_limit_per_minute: 5
-
+  binance:
+    api_key: YOUR_BINANCE_API_KEY
+    api_secret: YOUR_BINANCE_API_SECRET
+    rate_limit_per_minute: 1200
+    testnet: true
   yahoo_finance:
     rate_limit_per_minute: 120
-
+bot:
+  initial_capital: 10000.0
+  max_portfolio_risk: 0.1
+  max_positions: 10
+  max_risk_per_trade: 0.02
+  trading_mode: paper
 database:
-  url: sqlite+aiosqlite:///smart_investment_bot.db
   echo: false
-
+  url: sqlite+aiosqlite:///smart_investment_bot.db
+logging:
+  backup_count: 5
+  file_path: logs/bot.log
+  level: INFO
+  max_file_size: 10MB
+notifications:
+  discord:
+    enabled: false
+    webhook_url: YOUR_DISCORD_WEBHOOK_URL
+  telegram:
+    bot_token: YOUR_TELEGRAM_BOT_TOKEN
+    chat_id: YOUR_TELEGRAM_CHAT_ID
+    enabled: false
+risk_management:
+  correlation_limit: 0.3
+  max_drawdown: 0.2
+  stop_loss_enabled: true
+  take_profit_enabled: true
+strategies:
+  scalping:
+    enabled: true
+    rsi_overbought: 70
+    rsi_oversold: 30
+    stop_loss_pct: 0.005
+    take_profit_pct: 0.01
+    timeframe: 5m
+  swing:
+    enabled: true
+    rsi_overbought: 65
+    rsi_oversold: 35
+    stop_loss_pct: 0.03
+    take_profit_pct: 0.08
+    timeframe: 4h
 web:
   host: 0.0.0.0
   port: 8000
   reload: false
-
-notifications:
-  telegram:
-    enabled: false
-    bot_token: YOUR_TELEGRAM_BOT_TOKEN
-    chat_id: YOUR_TELEGRAM_CHAT_ID
-
-  discord:
-    enabled: false
-    webhook_url: YOUR_DISCORD_WEBHOOK_URL
-
-risk_management:
-  max_drawdown: 0.2      # 20%
-  stop_loss_enabled: true
-  take_profit_enabled: true
-  max_correlation_exposure: 0.3  # 30%
-
-logging:
-  level: INFO
-  file_path: logs/bot.log
-  max_file_size: 10MB
-  backup_count: 5
-  console_enabled: true
-  file_enabled: true
-  json_enabled: false
-
-# Trading pairs configuration
-trading_pairs:
-  - symbol: BTC/USDT
-    asset_type: crypto
-    enabled: true
-    max_position_size: 0.10  # 10% of portfolio
-    strategies: [scalping, swing]
-    
-  - symbol: ETH/USDT
-    asset_type: crypto
-    enabled: true
-    max_position_size: 0.10
-    strategies: [scalping, swing]
-    
-  - symbol: AAPL
-    asset_type: stock
-    enabled: true
-    max_position_size: 0.08
-    strategies: [swing]
-    
-  - symbol: MSFT
-    asset_type: stock
-    enabled: true
-    max_position_size: 0.08
-    strategies: [swing]
-    
-  - symbol: EURUSD
-    asset_type: forex
-    enabled: true
-    max_position_size: 0.05
-    strategies: [swing]
