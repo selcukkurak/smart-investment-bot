@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Investment Bot Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 Smart Investment Bot</h1>
+            <div class="header-controls">
+                <div class="bot-status" id="botStatus">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText">Loading...</span>
+                </div>
+                <div class="control-buttons">
+                    <button id="startBtn" class="btn btn-success">Start Bot</button>
+                    <button id="stopBtn" class="btn btn-danger">Stop Bot</button>
+                    <button id="emergencyBtn" class="btn btn-warning">Emergency Stop</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard-grid">
+            <!-- Portfolio Overview -->
+            <div class="card portfolio-overview">
+                <div class="card-header">
+                    <h3>💼 Portfolio Overview</h3>
+                    <div class="last-updated" id="lastUpdated"></div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <div class="metric-label">Total Value</div>
+                            <div class="metric-value" id="totalValue">$0.00</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Total Return</div>
+                            <div class="metric-value" id="totalReturn">0.00%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Daily Return</div>
+                            <div class="metric-value" id="dailyReturn">0.00%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Cash Balance</div>
+                            <div class="metric-value" id="cashBalance">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="card performance-chart">
+                <div class="card-header">
+                    <h3>📈 Performance Chart</h3>
+                    <div class="chart-controls">
+                        <button class="btn btn-sm" onclick="updateChart(7)">7D</button>
+                        <button class="btn btn-sm active" onclick="updateChart(30)">30D</button>
+                        <button class="btn btn-sm" onclick="updateChart(90)">90D</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Active Positions -->
+            <div class="card positions">
+                <div class="card-header">
+                    <h3>📊 Active Positions</h3>
+                    <span class="badge" id="positionsCount">0</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="positions-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Price</th>
+                                    <th>Value</th>
+                                    <th>P&L</th>
+                                    <th>P&L %</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsTableBody">
+                                <tr>
+                                    <td colspan="8" class="no-data">No active positions</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="card recent-trades">
+                <div class="card-header">
+                    <h3>🔄 Recent Trades</h3>
+                    <span class="badge" id="tradesCount">0</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Symbol</th>
+                                    <th>Amount</th>
+                                    <th>Price</th>
+                                    <th>P&L</th>
+                                    <th>Strategy</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradesTableBody">
+                                <tr>
+                                    <td colspan="7" class="no-data">No recent trades</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Management -->
+            <div class="card risk-management">
+                <div class="card-header">
+                    <h3>⚠️ Risk Management</h3>
+                    <div class="risk-indicator" id="riskIndicator">
+                        <span class="risk-level" id="riskLevel">LOW</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="risk-metrics">
+                        <div class="risk-metric">
+                            <span class="label">Risk Score:</span>
+                            <span class="value" id="riskScore">0/10</span>
+                        </div>
+                        <div class="risk-metric">
+                            <span class="label">Portfolio Risk:</span>
+                            <span class="value" id="portfolioRisk">0.0%</span>
+                        </div>
+                        <div class="risk-metric">
+                            <span class="label">VaR (95%):</span>
+                            <span class="value" id="var95">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="risk-recommendations" id="riskRecommendations">
+                        <p>No risk warnings</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Statistics -->
+            <div class="card trading-stats">
+                <div class="card-header">
+                    <h3>📊 Trading Statistics</h3>
+                    <span class="period">Last 30 days</span>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <div class="stat-value" id="totalTrades">0</div>
+                            <div class="stat-label">Total Trades</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="winRate">0%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="avgProfit">$0.00</div>
+                            <div class="stat-label">Avg Profit</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="bestTrade">$0.00</div>
+                            <div class="stat-label">Best Trade</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Opportunities -->
+            <div class="card opportunities">
+                <div class="card-header">
+                    <h3>🎯 Market Opportunities</h3>
+                    <button class="btn btn-sm" onclick="refreshOpportunities()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div class="opportunities-list" id="opportunitiesList">
+                        <p class="no-data">No opportunities detected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Panel -->
+        <div class="alerts-panel" id="alertsPanel">
+            <div class="alerts-header">
+                <h4>🔔 Alerts</h4>
+                <button class="close-btn" onclick="closeAlerts()">×</button>
+            </div>
+            <div class="alerts-list" id="alertsList">
+                <!-- Alerts will be populated here -->
+            </div>
+        </div>
+
+        <!-- Manual Trading Modal -->
+        <div class="modal" id="tradingModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📝 Manual Trade</h3>
+                    <button class="close-btn" onclick="closeTradingModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="tradingForm">
+                        <div class="form-group">
+                            <label for="tradeSymbol">Symbol:</label>
+                            <input type="text" id="tradeSymbol" placeholder="e.g., BTC/USDT" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tradeAction">Action:</label>
+                            <select id="tradeAction" required>
+                                <option value="BUY">BUY</option>
+                                <option value="SELL">SELL</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tradeAmount">Amount:</label>
+                            <input type="number" id="tradeAmount" step="0.00001" placeholder="0.001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tradePrice">Price (optional):</label>
+                            <input type="number" id="tradePrice" step="0.01" placeholder="Market price">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Execute Trade</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeTradingModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Processing...</p>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
