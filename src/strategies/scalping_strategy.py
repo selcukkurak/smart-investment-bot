@@ -3,8 +3,6 @@ Smart Investment Bot - Scalping Strategy Implementation
 High-frequency trading strategy for quick profits
 """
 
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from .base_strategy import BaseStrategy, Signal, SignalType
@@ -37,34 +35,34 @@ class ScalpingStrategy(BaseStrategy):
             'Volume_Ratio', 'SMA_20', 'EMA_12', 'BB_Upper', 'BB_Lower'
         ]
     
-    def analyze(self, symbol: str, data: pd.DataFrame) -> Signal:
+    def analyze(self, symbol: str, data: List[Dict]) -> Signal:
         """
         Advanced scalping analysis with multiple confirmation signals
         """
         if not self.validate_data(data) or len(data) < 50:
             return Signal(SignalType.HOLD, 0.0, 0.0, "Insufficient data for scalping", {})
         
-        # Ensure we have all required indicators
-        if 'RSI' not in data.columns:
+        # Add indicators if not present
+        if 'RSI' not in data[-1]:
             data = self.add_technical_indicators(data)
         
         # Get recent data points
-        latest = data.iloc[-1]
-        prev1 = data.iloc[-2]
-        prev2 = data.iloc[-3]
+        latest = data[-1]
+        prev1 = data[-2] if len(data) > 1 else latest
+        prev2 = data[-3] if len(data) > 2 else latest
         
-        current_price = latest['close']
+        current_price = latest.get('close', latest.get('price', 0))
         
-        # Extract indicators
-        rsi = latest['RSI']
-        macd = latest['MACD']
-        macd_signal = latest['MACD_Signal']
-        macd_hist = latest['MACD_Histogram']
-        volume_ratio = latest['Volume_Ratio']
-        sma_20 = latest['SMA_20']
-        ema_12 = latest['EMA_12']
-        bb_upper = latest['BB_Upper']
-        bb_lower = latest['BB_Lower']
+        # Extract indicators with safe defaults
+        rsi = latest.get('RSI')
+        macd = latest.get('MACD')
+        macd_signal = latest.get('MACD_Signal')
+        macd_hist = latest.get('MACD_Histogram')
+        volume_ratio = latest.get('Volume_Ratio', 1.0)
+        sma_20 = latest.get('SMA_20')
+        ema_12 = latest.get('EMA_12')
+        bb_upper = latest.get('BB_Upper')
+        bb_lower = latest.get('BB_Lower')
         
         # Initialize scoring system
         buy_score = 0
@@ -73,7 +71,7 @@ class ScalpingStrategy(BaseStrategy):
         reasoning_parts = []
         
         # 1. RSI Analysis (Primary Signal)
-        if pd.notna(rsi):
+        if rsi is not None:
             if rsi <= self.rsi_oversold:
                 buy_score += 3
                 confidence_components.append(0.3)
@@ -92,9 +90,9 @@ class ScalpingStrategy(BaseStrategy):
                 reasoning_parts.append(f"RSI overbought ({rsi:.1f})")
         
         # 2. MACD Analysis (Momentum Confirmation)
-        if pd.notna(macd) and pd.notna(macd_signal):
-            macd_prev = prev1['MACD'] if pd.notna(prev1['MACD']) else macd
-            macd_signal_prev = prev1['MACD_Signal'] if pd.notna(prev1['MACD_Signal']) else macd_signal
+        if macd is not None and macd_signal is not None:
+            macd_prev = prev1.get('MACD', macd)
+            macd_signal_prev = prev1.get('MACD_Signal', macd_signal)
             
             # Bullish crossover
             if macd > macd_signal and macd_prev <= macd_signal_prev:
@@ -108,8 +106,8 @@ class ScalpingStrategy(BaseStrategy):
                 reasoning_parts.append("MACD bearish crossover")
             
             # MACD histogram momentum
-            if pd.notna(macd_hist):
-                macd_hist_prev = prev1['MACD_Histogram'] if pd.notna(prev1['MACD_Histogram']) else macd_hist
+            if macd_hist is not None:
+                macd_hist_prev = prev1.get('MACD_Histogram', macd_hist)
                 if macd_hist > 0 and macd_hist > macd_hist_prev:
                     buy_score += 1
                     confidence_components.append(0.1)
@@ -222,20 +220,24 @@ class ScalpingStrategy(BaseStrategy):
                 'stop_loss': entry_price * (1 + self.tight_stop_loss / 100)
             }
     
-    def is_scalping_opportunity(self, data: pd.DataFrame, min_volatility: float = 0.01) -> bool:
+    def is_scalping_opportunity(self, data: List[Dict], min_volatility: float = 0.01) -> bool:
         """
         Check if current market conditions are suitable for scalping
         """
         if len(data) < 20:
             return False
         
+        # Extract prices for volatility calculation
+        prices = [d.get('close', d.get('price', 0)) for d in data[-20:]]
+        volumes = [d.get('volume', 1) for d in data[-20:]]
+        
         # Check recent volatility
-        recent_returns = data['close'].tail(20).pct_change().dropna()
-        volatility = recent_returns.std()
+        returns = [(prices[i] - prices[i-1]) / prices[i-1] for i in range(1, len(prices))]
+        volatility = (sum(r**2 for r in returns) / len(returns)) ** 0.5
         
         # Check volume activity
-        avg_volume = data['volume'].tail(20).mean()
-        current_volume = data['volume'].iloc[-1]
+        avg_volume = sum(volumes) / len(volumes)
+        current_volume = volumes[-1]
         volume_ratio = current_volume / avg_volume if avg_volume > 0 else 0
         
         # Scalping is good when:
@@ -246,7 +248,7 @@ class ScalpingStrategy(BaseStrategy):
         conditions_met = (
             min_volatility <= volatility <= 0.05 and  # Moderate volatility
             volume_ratio >= 0.8 and                   # Decent volume
-            not pd.isna(data['close'].iloc[-1])        # Valid price data
+            prices[-1] > 0                             # Valid price data
         )
         
         return conditions_met

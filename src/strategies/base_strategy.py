@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
-import pandas as pd
 
 
 class SignalType(Enum):
@@ -42,13 +41,13 @@ class BaseStrategy(ABC):
         self.signals_history: List[Signal] = []
         
     @abstractmethod
-    def analyze(self, symbol: str, data: pd.DataFrame) -> Signal:
+    def analyze(self, symbol: str, data: List[Dict]) -> Signal:
         """
         Analyze market data and generate trading signal
         
         Args:
             symbol: Trading symbol
-            data: OHLCV data with technical indicators
+            data: List of OHLCV dictionaries with technical indicators
             
         Returns:
             Signal: Trading signal with confidence and reasoning
@@ -60,69 +59,107 @@ class BaseStrategy(ABC):
         """Return list of required technical indicators for this strategy"""
         pass
     
-    def validate_data(self, data: pd.DataFrame) -> bool:
+    def validate_data(self, data: List[Dict]) -> bool:
         """Validate that data contains required indicators"""
+        if not data or not isinstance(data[0], dict):
+            return False
+        
         required = self.get_required_indicators()
-        return all(indicator in data.columns for indicator in required)
+        return all(indicator in data[-1] for indicator in required)
     
-    def calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
+    def calculate_rsi(self, prices: List[float], period: int = 14) -> List[Optional[float]]:
         """Calculate Relative Strength Index"""
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
+        if len(prices) < period + 1:
+            return [None] * len(prices)
+        
+        rsi = []
+        deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        
+        rsi.append(None)  # First price has no RSI
+        
+        for i in range(period, len(prices)):
+            recent_deltas = deltas[i-period:i]
+            gains = [max(d, 0) for d in recent_deltas]
+            losses = [abs(min(d, 0)) for d in recent_deltas]
+            
+            avg_gain = sum(gains) / period
+            avg_loss = sum(losses) / period
+            
+            if avg_loss == 0:
+                rsi_value = 100
+            else:
+                rs = avg_gain / avg_loss
+                rsi_value = 100 - (100 / (1 + rs))
+            
+            rsi.append(rsi_value)
+        
+        while len(rsi) < len(prices):
+            rsi.insert(0, None)
+        
         return rsi
     
-    def calculate_macd(self, prices: pd.Series, fast: int = 12, 
-                      slow: int = 26, signal: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def calculate_macd(self, prices: List[float], fast: int = 12, 
+                      slow: int = 26, signal: int = 9) -> Tuple[List[Optional[float]], List[Optional[float]], List[Optional[float]]]:
         """Calculate MACD, Signal line, and Histogram"""
-        ema_fast = prices.ewm(span=fast).mean()
-        ema_slow = prices.ewm(span=slow).mean()
-        macd = ema_fast - ema_slow
-        signal_line = macd.ewm(span=signal).mean()
-        histogram = macd - signal_line
-        return macd, signal_line, histogram
+        # Use the technical analysis module for calculations
+        from ..analysis.technical_analysis import TechnicalAnalysis
+        return TechnicalAnalysis.calculate_macd(prices, fast, slow, signal)
     
-    def calculate_bollinger_bands(self, prices: pd.Series, period: int = 20, 
-                                std_dev: int = 2) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def calculate_bollinger_bands(self, prices: List[float], period: int = 20, 
+                                std_dev: int = 2) -> Tuple[List[Optional[float]], List[Optional[float]], List[Optional[float]]]:
         """Calculate Bollinger Bands"""
-        sma = prices.rolling(window=period).mean()
-        std = prices.rolling(window=period).std()
-        upper_band = sma + (std * std_dev)
-        lower_band = sma - (std * std_dev)
-        return upper_band, sma, lower_band
+        from ..analysis.technical_analysis import TechnicalAnalysis
+        return TechnicalAnalysis.calculate_bollinger_bands(prices, period, std_dev)
     
-    def add_technical_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+    def add_technical_indicators(self, data: List[Dict]) -> List[Dict]:
         """Add common technical indicators to data"""
-        df = data.copy()
+        if not data:
+            return data
         
-        # Moving Averages
-        df['SMA_20'] = df['close'].rolling(window=20).mean()
-        df['SMA_50'] = df['close'].rolling(window=50).mean()
-        df['EMA_12'] = df['close'].ewm(span=12).mean()
-        df['EMA_26'] = df['close'].ewm(span=26).mean()
+        # Extract prices for calculations
+        prices = [d.get('close', d.get('price', 0)) for d in data]
+        volumes = [d.get('volume', 0) for d in data]
         
-        # RSI
-        df['RSI'] = self.calculate_rsi(df['close'])
+        # Calculate indicators
+        from ..analysis.technical_analysis import TechnicalAnalysis
+        sma_20 = TechnicalAnalysis.calculate_sma(prices, 20)
+        sma_50 = TechnicalAnalysis.calculate_sma(prices, 50)
+        ema_12 = TechnicalAnalysis.calculate_ema(prices, 12)
+        ema_26 = TechnicalAnalysis.calculate_ema(prices, 26)
+        rsi = TechnicalAnalysis.calculate_rsi(prices)
+        macd, signal_line, histogram = TechnicalAnalysis.calculate_macd(prices)
+        bb_upper, bb_middle, bb_lower = TechnicalAnalysis.calculate_bollinger_bands(prices)
         
-        # MACD
-        macd, signal_line, histogram = self.calculate_macd(df['close'])
-        df['MACD'] = macd
-        df['MACD_Signal'] = signal_line
-        df['MACD_Histogram'] = histogram
+        # Add indicators to data
+        enhanced_data = []
+        for i, d in enumerate(data):
+            enhanced = d.copy()
+            enhanced.update({
+                'SMA_20': sma_20[i] if i < len(sma_20) else None,
+                'SMA_50': sma_50[i] if i < len(sma_50) else None,
+                'EMA_12': ema_12[i] if i < len(ema_12) else None,
+                'EMA_26': ema_26[i] if i < len(ema_26) else None,
+                'RSI': rsi[i] if i < len(rsi) else None,
+                'MACD': macd[i] if i < len(macd) else None,
+                'MACD_Signal': signal_line[i] if i < len(signal_line) else None,
+                'MACD_Histogram': histogram[i] if i < len(histogram) else None,
+                'BB_Upper': bb_upper[i] if i < len(bb_upper) else None,
+                'BB_Middle': bb_middle[i] if i < len(bb_middle) else None,
+                'BB_Lower': bb_lower[i] if i < len(bb_lower) else None,
+            })
+            
+            # Volume indicators
+            if i >= 20:
+                avg_volume = sum(volumes[i-19:i+1]) / 20
+                enhanced['Volume_SMA'] = avg_volume
+                enhanced['Volume_Ratio'] = volumes[i] / avg_volume if avg_volume > 0 else 1
+            else:
+                enhanced['Volume_SMA'] = None
+                enhanced['Volume_Ratio'] = 1
+            
+            enhanced_data.append(enhanced)
         
-        # Bollinger Bands
-        bb_upper, bb_middle, bb_lower = self.calculate_bollinger_bands(df['close'])
-        df['BB_Upper'] = bb_upper
-        df['BB_Middle'] = bb_middle
-        df['BB_Lower'] = bb_lower
-        
-        # Volume indicators
-        df['Volume_SMA'] = df['volume'].rolling(window=20).mean()
-        df['Volume_Ratio'] = df['volume'] / df['Volume_SMA']
-        
-        return df
+        return enhanced_data
     
     def record_signal(self, signal: Signal):
         """Record a signal in history"""
