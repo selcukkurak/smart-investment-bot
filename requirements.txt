@@ -1,0 +1,44 @@
+# Core dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+asyncio-mqtt>=0.11.0
+
+# Technical Analysis
+ta-lib>=0.4.25
+yfinance>=0.2.0
+
+# API Clients
+ccxt>=4.0.0
+requests>=2.31.0
+websockets>=11.0.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Configuration
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Logging and Utilities
+loguru>=0.7.0
+schedule>=1.2.0
+
+# Notifications
+python-telegram-bot>=20.0
+discord.py>=2.3.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+
+# Data Analysis and Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Async HTTP
+aiohttp>=3.8.0

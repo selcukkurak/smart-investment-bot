@@ -1,0 +1,14 @@
+# Minimal requirements for basic functionality
+# Standard library only - no external dependencies initially
+
+# For basic functionality, we'll use built-in modules:
+# - json for configuration
+# - sqlite3 for database (built-in)
+# - urllib for HTTP requests (built-in)
+# - csv for data handling (built-in)
+
+# Optional external dependencies (install if needed):
+# pandas>=2.0.0
+# numpy>=1.24.0
+# yfinance>=0.2.0
+# pytest>=7.4.0

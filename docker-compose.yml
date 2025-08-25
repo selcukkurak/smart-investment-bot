@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  smart-bot:
+    build: .
+    container_name: smart-investment-bot
+    environment:
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - bot-network
+
+  postgres:
+    image: postgres:15
+    container_name: smart-bot-db
+    environment:
+      POSTGRES_DB: smart_bot
+      POSTGRES_USER: smart_bot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smart_bot_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - bot-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: smart-bot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bot-network
+
+  web-dashboard:
+    build: .
+    container_name: smart-bot-dashboard
+    command: uvicorn src.web.dashboard:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - bot-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bot-network:
+    driver: bridge
